@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 TikTok Auto Like - Bản Mới | Huamanhcuong</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{background:linear-gradient(145deg,#0a0a14,#12121f);font-family:'Segoe UI',system-ui;padding:20px;min-height:100vh;display:flex;justify-content:center;align-items:center;}
+        .container{max-width:750px;width:100%;background:#0f0f1a;border-radius:48px;border:1px solid #2a2a3a;overflow:hidden;box-shadow:0 20px 35px rgba(0,0,0,0.5);}
+        .header{background:#1a1a2e;padding:24px;text-align:center;}
+        .header h1{color:#ff3b6f;font-size:1.7rem;}
+        .header p{color:#aaa;font-size:0.8rem;margin-top:6px;}
+        .content{padding:28px;}
+        .lock-box{background:#080812;border-radius:32px;padding:20px;border:1px solid #ff3b6f;text-align:center;margin-bottom:20px;}
+        .lock-box input{width:100%;padding:14px;border-radius:40px;border:1px solid #3a3a4a;background:#000;color:white;text-align:center;margin-bottom:12px;}
+        .lock-box button{background:#ff3b6f;border:none;padding:12px;border-radius:40px;color:white;font-weight:bold;cursor:pointer;}
+        .error-msg{color:#ff8888;font-size:0.75rem;margin-top:8px;}
+        .hidden{display:none;}
+        .info{background:#1a1a2a;border-radius:20px;padding:12px;margin-bottom:20px;font-size:0.75rem;color:#ffcc88;}
+        input,textarea{width:100%;background:#0a0a12;border:1px solid #2c2c3a;border-radius:28px;padding:12px 16px;color:white;margin-bottom:15px;font-family:monospace;}
+        .flex{display:flex;gap:12px;margin-bottom:15px;}
+        .flex div{flex:1;}
+        button.primary{background:linear-gradient(95deg,#ff3b6f,#e6005c);border:none;padding:14px;border-radius:40px;color:white;font-weight:bold;font-size:1rem;cursor:pointer;width:100%;margin-bottom:12px;}
+        button.secondary{background:#2a2a3c;}
+        .status{background:#080812;border-radius:28px;padding:12px;text-align:center;margin-bottom:20px;color:#ffcc88;}
+        .log{background:#030308;border-radius:20px;padding:15px;height:260px;overflow-y:auto;font-family:monospace;font-size:0.7rem;}
+        .log-line{border-bottom:1px solid #1e1e2e;padding:5px 0;color:#aaffdd;}
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <div id="lockScreen">
+        <div class="header"><h1>🔐 XÁC THỰC</h1></div>
+        <div class="content">
+            <div class="lock-box">
+                <input type="password" id="passInput" placeholder="Nhập mật khẩu">
+                <button id="unlockBtn">MỞ KHÓA</button>
+                <div id="lockError" class="error-msg"></div>
+            </div>
+        </div>
+    </div>
+    <div id="toolScreen" class="hidden">
+        <div class="header">
+            <h1>🔥 TikTok Auto Like Pro 🔥</h1>
+            <p>Huamanhcuong · Gửi like thật qua API (cần cookie đăng nhập)</p>
+        </div>
+        <div class="content">
+            <div class="info">
+                📌 <strong>HƯỚNG DẪN LẤY COOKIE:</strong> Đăng nhập TikTok trên Chrome/Edge → F12 → Application → Cookies → https://www.tiktok.com → copy toàn bộ (vd: sessionid=abc; ...)
+            </div>
+            <label>🍪 Cookie (chuỗi dài):</label>
+            <textarea id="cookieField" rows="2" placeholder="sessionid=xxx; passport_csrf_token=yyy; ..."></textarea>
+            <label>🎯 Link video (chứa /video/ số):</label>
+            <input type="text" id="videoLink" placeholder="https://www.tiktok.com/@user/video/1234567890">
+            <div class="flex">
+                <div><label>❤️ Số like:</label><input type="number" id="likeNum" value="5" min="1" max="30"></div>
+                <div><label>⏱️ Delay (ms):</label><input type="number" id="delayMs" value="1200" min="600"></div>
+            </div>
+            <button class="primary" id="startBtn">🚀 BẮT ĐẦU LIKE THẬT</button>
+            <button class="primary secondary hidden" id="stopBtn">⏹️ DỪNG</button>
+            <div id="statusBox" class="status">⚡ Sẵn sàng</div>
+            <div class="log" id="logBox">
+                <div class="log-line">📌 Tool dùng proxy CORS, yêu cầu cookie hợp lệ. Like thật sẽ cộng vào video.</div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function(){
+    const PASSWORD = "Huamanhcuong";
+    const lockDiv = document.getElementById('lockScreen');
+    const toolDiv = document.getElementById('toolScreen');
+    const passInput = document.getElementById('passInput');
+    const unlockBtn = document.getElementById('unlockBtn');
+    const lockError = document.getElementById('lockError');
+    
+    const cookieField = document.getElementById('cookieField');
+    const videoLink = document.getElementById('videoLink');
+    const likeNum = document.getElementById('likeNum');
+    const delayMs = document.getElementById('delayMs');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusBox = document.getElementById('statusBox');
+    const logBox = document.getElementById('logBox');
+    
+    let isRunning = false;
+    let stopFlag = false;
+    
+    function addLog(msg, isErr=false){
+        const div = document.createElement('div');
+        div.className = 'log-line';
+        div.style.color = isErr ? '#ffaa88' : '#aaffdd';
+        div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logBox.appendChild(div);
+        div.scrollIntoView({behavior:'smooth',block:'nearest'});
+        while(logBox.children.length>180) logBox.removeChild(logBox.firstChild);
+    }
+    
+    unlockBtn.onclick = () => {
+        if(passInput.value.trim() === PASSWORD){
+            lockDiv.classList.add('hidden');
+            toolDiv.classList.remove('hidden');
+            addLog("✅ Mở khóa thành công. Nhập cookie và link video.");
+        } else {
+            lockError.innerText = "❌ Sai mật khẩu!";
+            passInput.value = "";
+        }
+    };
+    
+    function extractVideoId(url){
+        let match = url.match(/\/video\/(\d+)/);
+        return match ? match[1] : null;
+    }
+    
+    async function sendLike(videoId, cookie){
+        const proxy = "https://cors-anywhere.herokuapp.com/";
+        const apiUrl = "https://www.tiktok.com/api/like/v2/";
+        const fullUrl = proxy + apiUrl;
+        const params = new URLSearchParams();
+        params.append('aid', '1988');
+        params.append('item_id', videoId);
+        params.append('like_type', '1');
+        params.append('channel_id', '0');
+        params.append('sec_user_id', '');
+        try {
+            const res = await fetch(fullUrl, {
+                method: 'POST',
+                headers: {
+                    'Cookie': cookie,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Origin': 'https://www.tiktok.com',
+                    'Referer': 'https://www.tiktok.com/',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: params.toString()
+            });
+            const data = await res.json();
+            if(data.status_code === 0 || data.status_code === 200){
+                return { ok: true, msg: '✅ Like thành công (đã cộng tim)' };
+            } else {
+                let err = `Lỗi code ${data.status_code}`;
+                if(data.status_code === 1) err = 'Bạn đã like video này rồi';
+                if(data.status_code === 2) err = 'Video không tồn tại';
+                if(data.status_code === 3) err = 'Cookie hết hạn hoặc sai';
+                return { ok: false, msg: `❌ ${err}` };
+            }
+        } catch(e){
+            return { ok: false, msg: `❌ Lỗi kết nối: ${e.message}` };
+        }
+    }
+    
+    async function startLike(){
+        let cookie = cookieField.value.trim();
+        let url = videoLink.value.trim();
+        let videoId = extractVideoId(url);
+        let total = parseInt(likeNum.value);
+        let delay = parseInt(delayMs.value);
+        if(!cookie){
+            addLog("⚠️ Chưa nhập cookie!", true);
+            statusBox.innerHTML = "❌ Thiếu cookie";
+            return;
+        }
+        if(!videoId){
+            addLog("⚠️ Link video không hợp lệ. Cần dạng .../video/123456", true);
+            statusBox.innerHTML = "❌ Link sai";
+            return;
+        }
+        if(isNaN(total) || total<1) total=5;
+        if(total>30) total=30;
+        if(isNaN(delay) || delay<600) delay=1000;
+        
+        isRunning = true;
+        stopFlag = false;
+        startBtn.disabled = true;
+        startBtn.style.opacity = 0.5;
+        stopBtn.classList.remove('hidden');
+        statusBox.innerHTML = `🟢 Đang gửi like...`;
+        addLog(`🚀 Bắt đầu gửi ${total} like đến video ${videoId}`);
+        let success = 0;
+        for(let i=1; i<=total; i++){
+            if(stopFlag || !isRunning) break;
+            statusBox.innerHTML = `🔄 Đang xử lý ${i}/${total}`;
+            let result = await sendLike(videoId, cookie);
+            if(result.ok){
+                success++;
+                addLog(`✅ [${i}/${total}] ${result.msg}`);
+            } else {
+                addLog(`❌ [${i}/${total}] ${result.msg}`, true);
+            }
+            if(i<total && !stopFlag && isRunning){
+                await new Promise(r => setTimeout(r, delay));
+            }
+        }
+        if(!stopFlag){
+            statusBox.innerHTML = `✅ Hoàn thành: ${success}/${total} like thành công.`;
+            addLog(`🎉 Kết thúc: đã gửi ${success} like thật. Kiểm tra lại video sau vài giây.`);
+            if(success>0){
+                let banner = document.createElement('div');
+                banner.innerText = `✨ ĐÃ GỬI ${success} LIKE THẬT ✨`;
+                banner.style.cssText = `position:fixed; bottom:20px; right:20px; background:#000; border-left:5px solid #ff3b6f; padding:8px 18px; border-radius:40px; color:white; z-index:9999;`;
+                document.body.appendChild(banner);
+                setTimeout(()=>banner.remove(),5000);
+            }
+        } else {
+            statusBox.innerHTML = `⏸️ Dừng giữa chừng, đã gửi ${success}/${total} like.`;
+        }
+        isRunning = false;
+        startBtn.disabled = false;
+        startBtn.style.opacity = 1;
+        stopBtn.classList.add('hidden');
+    }
+    
+    function stopLike(){
+        if(!isRunning) return;
+        stopFlag = true;
+        isRunning = false;
+        addLog("⏸️ Đã dừng theo yêu cầu");
+        statusBox.innerHTML = "⏸️ Đã dừng";
+        startBtn.disabled = false;
+        startBtn.style.opacity = 1;
+        stopBtn.classList.add('hidden');
+    }
+    
+    startBtn.onclick = startLike;
+    stopBtn.onclick = stopLike;
+})();
+</script>
+</body>
+</html>
